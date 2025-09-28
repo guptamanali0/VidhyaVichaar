@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = ({ title, subtitle, showBackButton = false, onBackClick, showLogout = true, onLogout }) => {
+const Header = ({ title, subtitle, showBackButton = false, onBackClick }) => {
   return (
     <div className="header">
       <div className="container">
@@ -18,16 +18,6 @@ const Header = ({ title, subtitle, showBackButton = false, onBackClick, showLogo
             <h1>{title}</h1>
             {subtitle && <p>{subtitle}</p>}
           </div>
-          {showLogout && (
-            <div className="header-logout">
-              <button 
-                className="btn btn-logout"
-                onClick={onLogout}
-              >
-                Logout
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

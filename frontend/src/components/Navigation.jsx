@@ -1,13 +1,16 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const isStudentView = !location.pathname.startsWith('/ta') && !location.pathname.startsWith('/teacher');
-  const isTAView = location.pathname.startsWith('/ta');
-  const isTeacherView = location.pathname.startsWith('/teacher');
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div style={{
@@ -21,44 +24,37 @@ const Navigation = () => {
       padding: '12px 20px',
       borderRadius: '25px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-      border: '2px solid #e5e7eb'
+      border: '2px solid #e5e7eb',
+      alignItems: 'center'
     }}>
+      <span style={{
+        fontSize: '14px',
+        fontWeight: '600',
+        color: '#667eea',
+        marginRight: '8px'
+      }}>
+        {user?.email} ({user?.role})
+      </span>
+      
       <button
-        className={`btn ${isStudentView ? 'btn-primary' : 'btn-secondary'}`}
-        onClick={() => navigate('/')}
+        onClick={handleLogout}
         style={{ 
-          padding: '10px 20px', 
+          padding: '10px 16px', 
           fontSize: '14px',
           fontWeight: '600',
-          minWidth: '120px'
+          backgroundColor: '#ef4444',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease'
         }}
+        onMouseOver={(e) => e.target.style.backgroundColor = '#dc2626'}
+        onMouseOut={(e) => e.target.style.backgroundColor = '#ef4444'}
       >
-        Student View
+        Logout
       </button>
-      <button
-        className={`btn ${isTAView ? 'btn-primary' : 'btn-secondary'}`}
-        onClick={() => navigate('/ta')}
-        style={{ 
-          padding: '10px 20px', 
-          fontSize: '14px',
-          fontWeight: '600',
-          minWidth: '120px'
-        }}
-      >
-        TA View
-      </button>
-      <button
-        className={`btn ${isTeacherView ? 'btn-primary' : 'btn-secondary'}`}
-        onClick={() => navigate('/teacher')}
-        style={{ 
-          padding: '10px 20px', 
-          fontSize: '14px',
-          fontWeight: '600',
-          minWidth: '120px'
-        }}
-      >
-        Teacher View
-      </button>
+      
     </div>
   );
 };

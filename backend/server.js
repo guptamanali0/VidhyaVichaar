@@ -323,17 +323,195 @@ app.get("/api/students/:studentId/classes", async (req, res) => {
   }
 });
 
+// Get TA info by taid from teachingassistant table
+app.get("/api/ta/:taid", async (req, res) => {
+  try {
+    const { taid } = req.params;
+    
+    const ta = await TeachingAssistant.findOne({ taid: taid });
+    
+    if (!ta) {
+      return res.status(404).json({ error: "TA not found" });
+    }
+    
+    res.json({
+      taid: ta.taid,
+      name: ta.name,
+      assignedTeacher: ta.tid, // This is the teacher ID the TA is assigned to
+      tid: ta.tid
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get ALL classes for a specific teacher ID (for TA dashboard)
+app.get("/api/classes/teacher/:tid", async (req, res) => {
+  try {
+    const { tid } = req.params;
+    
+    const classes = await mongoose.connection.db.collection('classes')
+      .find({ tid: tid })
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    res.json(classes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Doubts Management API
+
+// Get all doubts (with optional filters)
 app.get("/api/doubts", async (req, res) => {
   try {
-    const doubts = await Doubt.find();
+    const { classId, studentId, teacherId, status } = req.query;
+    let query = {};
+    
+    if (classId) query.classtopic = classId;
+    if (studentId) query.sid = studentId;
+    if (teacherId) query.tid = teacherId;
+    if (status) query.sstatus = status;
+    
+    const doubts = await Doubt.find(query).sort({ timestamp: -1 });
     res.json(doubts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Post a new doubt
+app.post("/api/doubts", async (req, res) => {
+  try {
+    const { classId, studentId, teacherId, doubtText } = req.body;
+    
+    if (!classId || !studentId || !teacherId || !doubtText) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "All fields are required: classId, studentId, teacherId, doubtText" 
+      });
+    }
 
+    const newDoubt = {
+      classtopic: classId,
+      sid: studentId,
+      tid: teacherId,
+      doubtasked: doubtText,
+      sstatus: "unanswered",
+      timestamp: new Date()
+    };
 
+    const result = await mongoose.connection.db.collection('doubt').insertOne(newDoubt);
+    
+    res.json({ 
+      success: true, 
+      message: "Doubt posted successfully",
+      doubtId: result.insertedId,
+      doubt: { ...newDoubt, _id: result.insertedId }
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to post doubt", 
+      error: err.message 
+    });
+  }
+});
+
+// Update doubt status (mark as answered/unanswered)
+app.put("/api/doubts/:doubtId/status", async (req, res) => {
+  try {
+    const { doubtId } = req.params;
+    const { status } = req.body;
+    
+    if (!status || !['answered', 'unanswered'].includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Status must be 'answered' or 'unanswered'" 
+      });
+    }
+
+    const result = await mongoose.connection.db.collection('doubt').updateOne(
+      { _id: new mongoose.Types.ObjectId(doubtId) },
+      { 
+        $set: { 
+          sstatus: status,
+          updatedAt: new Date()
+        }
+      }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Doubt not found" 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Doubt marked as ${status}` 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to update doubt status", 
+      error: err.message 
+    });
+  }
+});
+
+// Get doubts for a specific class
+app.get("/api/classes/:classId/doubts", async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { studentId, status } = req.query;
+    
+    let query = { classtopic: decodeURIComponent(classId) };
+    
+    if (studentId) query.sid = studentId;
+    if (status) query.sstatus = status;
+    
+    const doubts = await Doubt.find(query).sort({ timestamp: -1 });
+    res.json(doubts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get doubts for a specific student
+app.get("/api/students/:studentId/doubts", async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { classId } = req.query;
+    
+    let query = { sid: studentId };
+    if (classId) query.classtopic = classId;
+    
+    const doubts = await Doubt.find(query).sort({ timestamp: -1 });
+    res.json(doubts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get doubts for classes taught by a specific teacher
+app.get("/api/teachers/:teacherId/doubts", async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { classId, status } = req.query;
+    
+    let query = { tid: teacherId };
+    if (classId) query.classtopic = classId;
+    if (status) query.sstatus = status;
+    
+    const doubts = await Doubt.find(query).sort({ timestamp: -1 });
+    res.json(doubts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

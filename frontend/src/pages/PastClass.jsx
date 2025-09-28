@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAllDoubts } from '../services/api';
+import { getClassDoubts } from '../services/api';
 import Header from '../components/Header';
+import { useAuth } from '../contexts/AuthContext';
 
 const PastClass = () => {
   const { classtopic } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doubts, setDoubts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,14 +22,11 @@ const PastClass = () => {
     const fetchDoubts = async () => {
       try {
         setLoading(true);
-        const data = await getAllDoubts();
-        // Filter doubts for current student and class topic
-        const studentDoubts = data.filter(
-          doubt => 
-            doubt.sid === 'student101' && 
-            doubt.classtopic === decodeURIComponent(classtopic)
-        );
-        setDoubts(studentDoubts);
+        const classId = decodeURIComponent(classtopic);
+        const data = await getClassDoubts(classId, { 
+          studentId: user?.email || user?.roll_no 
+        });
+        setDoubts(data);
       } catch (err) {
         setError('Failed to fetch doubts data');
         console.error('Error fetching doubts:', err);
@@ -36,8 +35,10 @@ const PastClass = () => {
       }
     };
 
-    fetchDoubts();
-  }, [classtopic]);
+    if (user) {
+      fetchDoubts();
+    }
+  }, [classtopic, user]);
 
   const getStableColor = (text) => {
     const colors = [

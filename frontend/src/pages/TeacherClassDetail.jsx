@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAllDoubts } from '../services/api';
-import { mockDoubts } from '../services/mockData';
+import { getClassDoubts, updateDoubtStatus } from '../services/api';
 import Header from '../components/Header';
 import axios from 'axios';
 
@@ -22,14 +21,9 @@ const TeacherClassDetail = () => {
     const fetchDoubts = async () => {
       try {
         setLoading(true);
-        const data = await getAllDoubts();
-        // Filter doubts for current class and teacher
-        const classDoubts = data.filter(
-          doubt => 
-            doubt.tid === tid && 
-            doubt.classtopic === decodeURIComponent(classtopic)
-        );
-        setDoubts(classDoubts);
+        const classId = decodeURIComponent(classtopic);
+        const data = await getClassDoubts(classId);
+        setDoubts(data);
       } catch (err) {
         setError('Failed to fetch doubts data');
         console.error('Error fetching doubts:', err);
@@ -39,12 +33,24 @@ const TeacherClassDetail = () => {
     };
 
     fetchDoubts();
+    
+    // Set up polling for real-time updates every 5 seconds
+    const interval = setInterval(fetchDoubts, 5000);
+    
+    return () => clearInterval(interval);
   }, [classtopic, tid]);
 
-  const handleMarkAsAnswered = (index) => {
-    setDoubts(prev => prev.map((doubt, i) => 
-      i === index ? { ...doubt, sstatus: 'answered' } : doubt
-    ));
+  const handleMarkAsAnswered = async (doubt) => {
+    try {
+      await updateDoubtStatus(doubt._id, 'answered');
+      // Update local state
+      setDoubts(prev => prev.map(d => 
+        d._id === doubt._id ? { ...d, sstatus: 'answered' } : d
+      ));
+    } catch (error) {
+      console.error('Error updating doubt status:', error);
+      alert('Failed to update doubt status. Please try again.');
+    }
   };
 
   const handleEndClass = async () => {
@@ -256,7 +262,7 @@ const TeacherClassDetail = () => {
                 {doubt.sstatus === 'unanswered' && (
                   <button
                     className="btn btn-primary"
-                    onClick={() => handleMarkAsAnswered(doubts.indexOf(doubt))}
+                    onClick={() => handleMarkAsAnswered(doubt)}
                     style={{ 
                       padding: '6px 12px',
                       fontSize: '12px',

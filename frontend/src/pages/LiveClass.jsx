@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAllDoubts } from '../services/api';
+import { getClassDoubts, postDoubt } from '../services/api';
 import Header from '../components/Header';
+import { useAuth } from '../contexts/AuthContext';
 
 const LiveClass = () => {
-  const { classtopic } = useParams();
+  const { classtopic, tid } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doubts, setDoubts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newDoubt, setNewDoubt] = useState('');
+  const [posting, setPosting] = useState(false);
 
   const handleLogout = () => {
     // TODO: Replace with actual logout logic when backend is ready
@@ -21,14 +24,11 @@ const LiveClass = () => {
     const fetchDoubts = async () => {
       try {
         setLoading(true);
-        const data = await getAllDoubts();
-        // Filter doubts for current student and class topic
-        const studentDoubts = data.filter(
-          doubt => 
-            doubt.sid === 'student101' && 
-            doubt.classtopic === decodeURIComponent(classtopic)
-        );
-        setDoubts(studentDoubts);
+        const classId = decodeURIComponent(classtopic);
+        const data = await getClassDoubts(classId, { 
+          studentId: user?.email || user?.roll_no 
+        });
+        setDoubts(data);
       } catch (err) {
         setError('Failed to fetch doubts data');
         console.error('Error fetching doubts:', err);
@@ -37,23 +37,35 @@ const LiveClass = () => {
       }
     };
 
-    fetchDoubts();
-  }, [classtopic]);
+    if (user) {
+      fetchDoubts();
+    }
+  }, [classtopic, user]);
 
-  const handlePostDoubt = () => {
-    if (newDoubt.trim()) {
-      // In a real app, this would make an API call
-      const newDoubtObj = {
-        tid: "teacher_alpha", // This would come from the class data
-        sid: "student101",
-        classtopic: decodeURIComponent(classtopic),
-        timestamp: new Date().toISOString(),
-        doubtasked: newDoubt.trim(),
-        sstatus: "unanswered"
-      };
-      
-      setDoubts(prev => [newDoubtObj, ...prev]);
-      setNewDoubt('');
+  const handlePostDoubt = async () => {
+    if (newDoubt.trim() && !posting) {
+      try {
+        setPosting(true);
+        const doubtData = {
+          classId: decodeURIComponent(classtopic),
+          studentId: user?.email || user?.roll_no,
+          teacherId: tid || "teacher_alpha", // Use tid from URL params or fallback
+          doubtText: newDoubt.trim()
+        };
+        
+        const response = await postDoubt(doubtData);
+        
+        if (response.success) {
+          // Add the new doubt to the local state for immediate UI update
+          setDoubts(prev => [response.doubt, ...prev]);
+          setNewDoubt('');
+        }
+      } catch (err) {
+        console.error('Error posting doubt:', err);
+        alert('Failed to post doubt. Please try again.');
+      } finally {
+        setPosting(false);
+      }
     }
   };
 
@@ -115,9 +127,9 @@ const LiveClass = () => {
           className="btn btn-primary"
           onClick={handlePostDoubt}
           style={{ marginTop: '10px' }}
-          disabled={!newDoubt.trim()}
+          disabled={!newDoubt.trim() || posting}
         >
-          Post Doubt
+          {posting ? 'Posting...' : 'Post Doubt'}
         </button>
       </div>
 

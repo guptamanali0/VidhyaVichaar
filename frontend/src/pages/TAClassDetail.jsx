@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTAClasses, getClassQuestions } from '../services/taApi';
+import { getAllDoubts } from '../services/taApi';
 import Header from '../components/Header';
 
 const TAClassDetail = () => {
-  const { classId } = useParams();
+  const { classtopic, tid } = useParams();
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -16,19 +16,30 @@ const TAClassDetail = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [classesData, questionsData] = await Promise.all([
-          getTAClasses(),
-          getClassQuestions(classId)
-        ]);
+        // Get all doubts - same as student approach
+        const allDoubts = await getAllDoubts();
         
-        const currentClass = classesData.find(cls => cls.classId === classId);
-        if (!currentClass) {
-          setError('Class not found');
+        // Filter doubts for this specific class
+        const classDoubts = allDoubts.filter(doubt => {
+          const matchesClass = doubt.classtopic === decodeURIComponent(classtopic);
+          const matchesTeacher = doubt.tid === tid;
+          return matchesClass && matchesTeacher;
+        });
+        
+        if (classDoubts.length === 0) {
+          setError('No doubts found for this class');
           return;
         }
         
-        setClassData(currentClass);
-        setQuestions(questionsData);
+        // Create class data from the first doubt
+        const firstDoubt = classDoubts[0];
+        setClassData({
+          classtopic: firstDoubt.classtopic,
+          tid: firstDoubt.tid,
+          timestamp: firstDoubt.timestamp
+        });
+        
+        setQuestions(classDoubts);
       } catch (err) {
         setError('Failed to fetch class data');
         console.error('Error fetching class data:', err);
@@ -38,7 +49,7 @@ const TAClassDetail = () => {
     };
 
     fetchData();
-  }, [classId]);
+  }, [classtopic, tid]);
 
   const handleLogout = () => {
     console.log('TA Logout clicked - ready for backend integration');
@@ -66,7 +77,7 @@ const TAClassDetail = () => {
 
   const getFilteredQuestions = () => {
     if (filterStatus === 'all') return questions;
-    return questions.filter(q => q.status === filterStatus);
+    return questions.filter(q => q.sstatus === filterStatus);
   };
 
   const formatTimestamp = (timestamp) => {
@@ -81,7 +92,7 @@ const TAClassDetail = () => {
   };
 
   if (loading) {
-    return <div className="loading">Loading class questions...</div>;
+    return <div className="loading">Loading class doubts...</div>;
   }
 
   if (error) {
@@ -93,32 +104,33 @@ const TAClassDetail = () => {
   return (
     <div>
       <Header 
-        title={classData?.classtopic || 'Class Questions'}
-        subtitle={`Viewing doubts from ${classData?.teacherName || 'Teacher'}`}
+        title={classData?.classtopic || 'Class Doubts'}
+        subtitle={`Viewing doubts from Teacher ID: ${classData?.tid || 'Unknown'}`}
         showBackButton={true}
         onBackClick={() => navigate('/ta')}
         onLogout={handleLogout}
       />
       <div className="container">
+
         {/* Filter Tabs */}
         <div className="tabs" style={{ marginBottom: '20px' }}>
           <button 
             className={`tab ${filterStatus === 'all' ? 'active' : ''}`}
             onClick={() => setFilterStatus('all')}
           >
-            All Questions ({questions.length})
+            All Doubts ({questions.length})
           </button>
           <button 
             className={`tab ${filterStatus === 'unanswered' ? 'active' : ''}`}
             onClick={() => setFilterStatus('unanswered')}
           >
-            Pending ({questions.filter(q => q.status === 'unanswered').length})
+            Pending ({questions.filter(q => q.sstatus === 'unanswered').length})
           </button>
           <button 
             className={`tab ${filterStatus === 'answered' ? 'active' : ''}`}
             onClick={() => setFilterStatus('answered')}
           >
-            Answered ({questions.filter(q => q.status === 'answered').length})
+            Answered ({questions.filter(q => q.sstatus === 'answered').length})
           </button>
         </div>
 
@@ -128,22 +140,22 @@ const TAClassDetail = () => {
             <div>
               {filteredQuestions.map((question, index) => (
                 <div
-                  key={question.questionId}
-                  className={`sticky-note ${question.status}`}
+                  key={`${question.tid}-${question.sid}-${question.timestamp}-${index}`}
+                  className={`sticky-note ${question.sstatus}`}
                   style={{ 
-                    backgroundColor: getStableColor(question.questionText),
+                    backgroundColor: getStableColor(question.doubtasked),
                     transform: 'rotate(0deg)'
                   }}
                 >
-                  <div className={`status-badge ${question.status}`}>
-                    {question.status}
+                  <div className={`status-badge ${question.sstatus}`}>
+                    {question.sstatus}
                   </div>
                   <p style={{ 
                     marginBottom: '10px',
                     fontSize: '14px',
                     lineHeight: '1.4'
                   }}>
-                    {question.questionText}
+                    {question.doubtasked}
                   </p>
                   <p style={{ 
                     fontSize: '12px',
@@ -164,7 +176,7 @@ const TAClassDetail = () => {
               borderRadius: '12px',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
             }}>
-              No questions found for the selected filter.
+              No doubts found for the selected filter.
             </div>
           )}
         </div>

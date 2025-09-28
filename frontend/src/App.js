@@ -20,7 +20,7 @@ function App() {
           
           {/* TA Routes */}
           <Route path="/ta" element={<TADashboard />} />
-          <Route path="/ta/class/:classId" element={<TAClassDetail />} />
+          <Route path="/ta/class/:classtopic/:tid" element={<TAClassDetail />} />
         </Routes>
       </div>
     </Router>

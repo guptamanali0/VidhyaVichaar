@@ -1,7 +1,9 @@
 // src/services/taApi.js
-import { taMockData } from './taMockData';
 
-// Mock API service for TA interface
+import { taMockData } from './taMockData';
+import { mockDoubts } from './mockData';
+
+// Mock API service for TA interface - SAME as student approach
 export const getTAInfo = () => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -10,18 +12,22 @@ export const getTAInfo = () => {
   });
 };
 
-export const getTAClasses = () => {
+// Get ALL doubts - same as student approach
+export const getAllDoubts = () => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(taMockData.classes);
+      resolve(mockDoubts);
     }, 200);
   });
 };
 
-export const getClassQuestions = (classId) => {
+// Get questions for a specific class - simple filtering
+export const getClassQuestions = (classtopic, tid) => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const questions = taMockData.questions.filter(q => q.classId === classId);
+      const questions = mockDoubts.filter(doubt => 
+        doubt.classtopic === classtopic && doubt.tid === tid
+      );
       resolve(questions);
     }, 200);
   });

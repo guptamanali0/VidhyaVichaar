@@ -5,7 +5,8 @@ const ClassSummaryCard = ({ classData }) => {
   const navigate = useNavigate();
 
   const handleViewQuestions = () => {
-    navigate(`/ta/class/${classData.classId}`);
+    // Navigate using classtopic and tid
+    navigate(`/ta/class/${encodeURIComponent(classData.classtopic)}/${classData.tid}`);
   };
 
   const formatDate = (dateString) => {
@@ -42,7 +43,7 @@ const ClassSummaryCard = ({ classData }) => {
           fontSize: '14px',
           marginBottom: '5px'
         }}>
-          Teacher: {classData.teacherName}
+          Teacher ID: {classData.tid}
         </p>
         
         <p style={{ 
@@ -92,7 +93,7 @@ const ClassSummaryCard = ({ classData }) => {
         onClick={handleViewQuestions}
         style={{ width: '100%' }}
       >
-        View Questions
+        View Doubts
       </button>
     </div>
   );

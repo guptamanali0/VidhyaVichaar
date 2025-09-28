@@ -176,7 +176,7 @@ const TeacherDashboard = () => {
     <div>
       <Header 
         title="VidyaVichar - Teacher Dashboard" 
-        subtitle="Welcome back, Teacher Alpha! Manage your classes and student doubts."
+        // subtitle="Welcome back, Teacher Alpha! Manage your classes and student doubts."
         onLogout={handleLogout}
       />
       <div className="container">

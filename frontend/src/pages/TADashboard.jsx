@@ -61,7 +61,7 @@ const TADashboard = () => {
     <div>
       <Header 
         title="VidyaVichar - TA Dashboard" 
-        subtitle={`Welcome, TA ${taInfo?.taid}! View past classes and doubts.`}
+        // subtitle={`Welcome, TA ${taInfo?.taid}! View past classes and doubts.`}
         onLogout={handleLogout}
       />
       <div className="container">

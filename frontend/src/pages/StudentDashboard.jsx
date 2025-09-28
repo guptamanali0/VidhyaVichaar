@@ -121,8 +121,10 @@ const StudentDashboard = () => {
   return (
     <div>
       <Header 
-        title="VidyaVichar" 
-        subtitle="Welcome back, Student 101! Here are your classes."
+        title="VidyaVichar - Student Dashboard
+        
+        " 
+        // subtitle="Welcome back, Student 101! Here are your classes."
         onLogout={handleLogout}
       />
       <div className="container">

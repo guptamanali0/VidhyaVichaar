@@ -23,7 +23,7 @@ mongoose.connect(process.env.MONGO_URL)
   "student" // exact collection name in Atlas
 );
 
-app.get("/api/students", async (req, res) => {
+app.get("/api/login", async (req, res) => {
   try {
     const students = await Student.find(); // fetch all docs
     console.log(students); // should now log your roll_no & password docs

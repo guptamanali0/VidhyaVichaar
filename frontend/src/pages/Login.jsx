@@ -27,7 +27,7 @@ const Login = () => {
     if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -36,39 +36,33 @@ const Login = () => {
       return;
     }
 
-    // Mock authentication
-    const mockAuth = {
-      student: { email: 'student@example.com', password: 'student123' },
-      ta: { email: 'ta@example.com', password: 'ta123' },
-      teacher: { email: 'teacher@example.com', password: 'teacher123' }
-    };
-
-    const roleAuth = mockAuth[formData.role];
-    if (formData.email === roleAuth.email && formData.password === roleAuth.password) {
-      login({
+    try {
+      const API = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      const res = await axios.post(`${API}/api/auth/login`, {
         email: formData.email,
-        role: formData.role,
-        isAuthenticated: true
+        password: formData.password,
+        role: formData.role
       });
 
-      const redirectPath = formData.role === 'student' ? '/' : `/${formData.role}`;
-      navigate(redirectPath, { replace: true });
-    } else {
-      setError('Invalid credentials');
+      if (res.data?.success) {
+        login({
+          email: formData.email,
+          role: formData.role,
+          isAuthenticated: true,
+          token: res.data.token
+        });
+
+        const redirectPath = formData.role === 'student' ? '/' : `/${formData.role}`;
+        navigate(redirectPath, { replace: true });
+      } else {
+        setError(res.data?.message || 'Invalid credentials');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Login failed. Please try again.');
     }
   };
  
-  const loginverify = async () => {
-    try {
-       // backend URL
-       console.log("I am here");
-      const response = await axios.get(`http://localhost:5000/api/login`);
-      const data = await response.json();
-      console.log(response); // logs in browser console
-    } catch (err) {
-      console.error("Error fetching students:", err);
-    }
-  };
   return (
     <div className="login-container">
       <div className="login-card">
@@ -80,10 +74,11 @@ const Login = () => {
           {error && <div className="error-message">{error}</div>}
           
           <div className="form-group">
-            <label>Email:</label>
+            <label>Roll Number:</label>
             <input
-              type="email"
+              type="text"
               name="email"
+              placeholder="Enter your roll number"
               value={formData.email}
               onChange={handleInputChange}
               required
@@ -137,7 +132,7 @@ const Login = () => {
             </div>
           </div>
 
-          <button type="submit" className="login-button" onClick={loginverify}>
+          <button type="submit" className="login-button">
             Login
           </button>
         </form>

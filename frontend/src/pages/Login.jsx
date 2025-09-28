@@ -74,11 +74,10 @@ const Login = () => {
           {error && <div className="error-message">{error}</div>}
           
           <div className="form-group">
-            <label>Roll Number:</label>
+            <label>User Id:</label>
             <input
               type="text"
               name="email"
-              placeholder="Enter your roll number"
               value={formData.email}
               onChange={handleInputChange}
               required
@@ -136,13 +135,6 @@ const Login = () => {
             Login
           </button>
         </form>
-
-        <div className="demo-credentials">
-          <strong>Demo Credentials:</strong><br />
-          Student: student@example.com / student123<br />
-          TA: ta@example.com / ta123<br />
-          Teacher: teacher@example.com / teacher123
-        </div>
       </div>
     </div>
   );

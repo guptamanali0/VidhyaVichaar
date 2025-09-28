@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAllDoubts } from '../services/api';
+import { getClassDoubts } from '../services/api';
 import Header from '../components/Header';
 
 const TeacherPastClassDetail = () => {
@@ -20,13 +20,9 @@ const TeacherPastClassDetail = () => {
     const fetchDoubts = async () => {
       try {
         setLoading(true);
-        const data = await getAllDoubts();
-        // Filter doubts for current class and teacher
-        const classDoubts = data.filter(
-          doubt => 
-            doubt.tid === tid && 
-            doubt.classtopic === decodeURIComponent(classtopic)
-        );
+        const classId = decodeURIComponent(classtopic);
+        // Get all doubts for this class (teachers can see all student doubts)
+        const classDoubts = await getClassDoubts(classId);
         setDoubts(classDoubts);
       } catch (err) {
         setError('Failed to fetch doubts data');

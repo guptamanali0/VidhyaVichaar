@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAllDoubts } from '../services/taApi';
+import { getClassDoubts } from '../services/api';
 import Header from '../components/Header';
 
 const TAClassDetail = () => {
@@ -16,27 +16,16 @@ const TAClassDetail = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Get all doubts - same as student approach
-        const allDoubts = await getAllDoubts();
+        const classId = decodeURIComponent(classtopic);
         
-        // Filter doubts for this specific class
-        const classDoubts = allDoubts.filter(doubt => {
-          const matchesClass = doubt.classtopic === decodeURIComponent(classtopic);
-          const matchesTeacher = doubt.tid === tid;
-          return matchesClass && matchesTeacher;
-        });
+        // Get all doubts for this class (TAs can see all student doubts)
+        const classDoubts = await getClassDoubts(classId);
         
-        if (classDoubts.length === 0) {
-          setError('No doubts found for this class');
-          return;
-        }
-        
-        // Create class data from the first doubt
-        const firstDoubt = classDoubts[0];
+        // Set class data
         setClassData({
-          classtopic: firstDoubt.classtopic,
-          tid: firstDoubt.tid,
-          timestamp: firstDoubt.timestamp
+          classtopic: classId,
+          tid: tid,
+          timestamp: new Date().toISOString()
         });
         
         setQuestions(classDoubts);
@@ -49,6 +38,11 @@ const TAClassDetail = () => {
     };
 
     fetchData();
+    
+    // Set up polling for real-time updates every 5 seconds
+    const interval = setInterval(fetchData, 5000);
+    
+    return () => clearInterval(interval);
   }, [classtopic, tid]);
 
   const handleLogout = () => {
@@ -162,7 +156,8 @@ const TAClassDetail = () => {
                     color: '#6b7280',
                     margin: 0
                   }}>
-                    Posted on {formatTimestamp(question.timestamp)}
+                    <strong>Student:</strong> {question.sid}<br/>
+                    <strong>Posted:</strong> {formatTimestamp(question.timestamp)}
                   </p>
                 </div>
               ))}

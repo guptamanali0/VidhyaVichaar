@@ -1,11 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const ClassCard = ({ classtopic, tid, date, isLive }) => {
+const ClassCard = ({ classtopic, tid, date, isLive, isTeacher = false }) => {
   const navigate = useNavigate();
 
   const handleButtonClick = () => {
-    if (isLive) {
+    if (isTeacher) {
+      navigate(`/teacher/class/${encodeURIComponent(classtopic)}/${encodeURIComponent(tid)}`);
+    } else if (isLive) {
       navigate(`/live-class/${encodeURIComponent(classtopic)}`);
     } else {
       navigate(`/past-class/${encodeURIComponent(classtopic)}`);
@@ -98,7 +100,7 @@ const ClassCard = ({ classtopic, tid, date, isLive }) => {
           transition: 'all 0.2s ease'
         }}
       >
-        {isLive ? 'Join Class' : 'View Doubts'}
+        {isTeacher ? 'Manage Doubts' : (isLive ? 'Join Class' : 'View Doubts')}
       </button>
     </div>
   );

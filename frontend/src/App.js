@@ -5,6 +5,9 @@ import LiveClass from './pages/LiveClass';
 import PastClass from './pages/PastClass';
 import TADashboard from './pages/TADashboard';
 import TAClassDetail from './pages/TAClassDetail';
+import TeacherDashboard from './pages/TeacherDashboard';
+import TeacherClassDetail from './pages/TeacherClassDetail';
+import TeacherPastClassDetail from './pages/TeacherPastClassDetail';
 import Navigation from './components/Navigation';
 
 function App() {
@@ -21,6 +24,11 @@ function App() {
           {/* TA Routes */}
           <Route path="/ta" element={<TADashboard />} />
           <Route path="/ta/class/:classtopic/:tid" element={<TAClassDetail />} />
+          
+          {/* Teacher Routes */}
+          <Route path="/teacher" element={<TeacherDashboard />} />
+          <Route path="/teacher/class/:classtopic/:tid" element={<TeacherClassDetail />} />
+          <Route path="/teacher/past-class/:classtopic/:tid" element={<TeacherPastClassDetail />} />
         </Routes>
       </div>
     </Router>

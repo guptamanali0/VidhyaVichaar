@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getTAInfo, getAllDoubts } from '../services/taApi';
+import { getTAInfo, getTeacherClasses } from '../services/taApi';
 import ClassSummaryCard from '../components/ClassSummaryCard';
 import Header from '../components/Header';
+import { useAuth } from '../contexts/AuthContext';
 
 const TADashboard = () => {
+  const { user } = useAuth();
   const [taInfo, setTaInfo] = useState(null);
-  const [doubts, setDoubts] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -13,12 +15,23 @@ const TADashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [taData, doubtsData] = await Promise.all([
-          getTAInfo(),
-          getAllDoubts()
-        ]);
+        
+        // Extract taid from authentication context (email field contains the taid)
+        const taid = user?.email;
+        
+        if (!taid) {
+          setError('TA ID not found in authentication context');
+          return;
+        }
+        
+        // First, get TA info from teachingassistant table
+        const taData = await getTAInfo(taid);
         setTaInfo(taData);
-        setDoubts(doubtsData);
+        
+        // Then, fetch ALL classes for the assigned teacher
+        const teacherClasses = await getTeacherClasses(taData.tid);
+        setClasses(teacherClasses);
+        
       } catch (err) {
         setError('Failed to fetch TA data');
         console.error('Error fetching TA data:', err);
@@ -28,33 +41,8 @@ const TADashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
-  // Create unique classes from doubts data - SAME as student approach
-  const getUniqueClasses = () => {
-    const classMap = new Map();
-    
-    doubts.forEach(doubt => {
-      const key = `${doubt.classtopic}-${doubt.tid}`;
-      if (!classMap.has(key)) {
-        classMap.set(key, {
-          classtopic: doubt.classtopic,
-          tid: doubt.tid,
-          timestamp: doubt.timestamp
-        });
-      }
-    });
-    
-    return Array.from(classMap.values());
-  };
-
-  // Filter classes by TA's assigned teacher
-  const getFilteredClasses = () => {
-    const allClasses = getUniqueClasses();
-    const taTeacherId = taInfo?.assignedTeacher;
-    
-    return allClasses.filter(cls => cls.tid === taTeacherId);
-  };
 
   const handleLogout = () => {
     console.log('TA Logout clicked - ready for backend integration');
@@ -69,8 +57,6 @@ const TADashboard = () => {
     return <div className="error">{error}</div>;
   }
 
-  const classes = getFilteredClasses();
-
   return (
     <div>
       <Header 
@@ -83,8 +69,13 @@ const TADashboard = () => {
           {classes.length > 0 ? (
             classes.map((classData, index) => (
               <ClassSummaryCard
-                key={`${classData.classtopic}-${classData.tid}-${index}`}
-                classData={classData}
+                key={`${classData.classId}-${classData.tid}-${index}`}
+                classData={{
+                  classtopic: classData.classId,
+                  tid: classData.tid,
+                  timestamp: classData.createdAt,
+                  active: classData.active
+                }}
               />
             ))
           ) : (
@@ -94,7 +85,7 @@ const TADashboard = () => {
               padding: '40px',
               color: '#6b7280'
             }}>
-              No past classes available.
+              No classes available for the assigned teacher.
             </div>
           )}
         </div>

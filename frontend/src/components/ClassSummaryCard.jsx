@@ -63,7 +63,7 @@ const ClassSummaryCard = ({ classData }) => {
           borderRadius: '8px',
           marginBottom: '10px'
         }}>
-          <div style={{ textAlign: 'center' }}>
+          {/* <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937' }}>
               {classData.totalQuestions}
             </div>
@@ -84,7 +84,7 @@ const ClassSummaryCard = ({ classData }) => {
               {classData.unansweredQuestions}
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>Pending</div>
-          </div>
+          </div> */}
         </div>
       </div>
       

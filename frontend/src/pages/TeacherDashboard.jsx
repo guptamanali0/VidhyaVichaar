@@ -378,7 +378,7 @@ const TeacherDashboard = () => {
                       borderRadius: '8px',
                       marginBottom: '10px'
                     }}>
-                      <div style={{ textAlign: 'center' }}>
+                      {/* <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937' }}>
                           {classDoubts.length}
                         </div>
@@ -399,7 +399,7 @@ const TeacherDashboard = () => {
                           {unansweredCount}
                         </div>
                         <div style={{ fontSize: '12px', color: '#6b7280' }}>Pending</div>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                   

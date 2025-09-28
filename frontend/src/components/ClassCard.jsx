@@ -1,16 +1,56 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-const ClassCard = ({ classtopic, tid, date, isLive, isTeacher = false }) => {
+const ClassCard = ({ classtopic, tid, date, isLive, isTeacher = false, classId, onJoinSuccess }) => {
   const navigate = useNavigate();
+  const [isJoining, setIsJoining] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
 
-  const handleButtonClick = () => {
+  const handleButtonClick = async () => {
     if (isTeacher) {
       navigate(`/teacher/class/${encodeURIComponent(classtopic)}/${encodeURIComponent(tid)}`);
-    } else if (isLive) {
+    } else if (isLive && !hasJoined) {
+      // Handle join class functionality
+      await handleJoinClass();
+    } else if (isLive && hasJoined) {
       navigate(`/live-class/${encodeURIComponent(classtopic)}`);
     } else {
       navigate(`/past-class/${encodeURIComponent(classtopic)}`);
+    }
+  };
+
+  const handleJoinClass = async () => {
+    try {
+      setIsJoining(true);
+      const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      
+      // Mock student data - in real app, get from auth context
+      const studentData = {
+        studentId: 'student_101',
+        studentEmail: 'student@example.com'
+      };
+
+      const response = await axios.post(`${API_BASE_URL}/api/classes/${classId}/join`, studentData);
+      
+      if (response.data.success) {
+        setHasJoined(true);
+        if (onJoinSuccess) {
+          onJoinSuccess();
+        }
+        // Navigate to live class after successful join
+        navigate(`/live-class/${encodeURIComponent(classtopic)}`);
+      }
+    } catch (error) {
+      console.error('Error joining class:', error);
+      if (error.response?.data?.error === 'Student already joined this class') {
+        setHasJoined(true);
+        navigate(`/live-class/${encodeURIComponent(classtopic)}`);
+      } else {
+        alert('Failed to join class. Please try again.');
+      }
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -89,6 +129,7 @@ const ClassCard = ({ classtopic, tid, date, isLive, isTeacher = false }) => {
       <button 
         className={`btn ${isLive ? 'btn-success' : 'btn-secondary'}`}
         onClick={handleButtonClick}
+        disabled={isJoining}
         style={{ 
           width: '100%',
           padding: '12px 16px',
@@ -96,11 +137,14 @@ const ClassCard = ({ classtopic, tid, date, isLive, isTeacher = false }) => {
           fontWeight: '600',
           borderRadius: '8px',
           border: 'none',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease'
+          cursor: isJoining ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s ease',
+          opacity: isJoining ? 0.7 : 1
         }}
       >
-        {isTeacher ? 'Manage Doubts' : (isLive ? 'Join Class' : 'View Doubts')}
+        {isTeacher ? 'Manage Doubts' : 
+         isLive ? (isJoining ? 'Joining...' : hasJoined ? 'Enter Class' : 'Join Class') : 
+         'View Doubts'}
       </button>
     </div>
   );

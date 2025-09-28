@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getAllDoubts } from '../services/api';
 import { mockDoubts } from '../services/mockData';
 import Header from '../components/Header';
+import axios from 'axios';
 
 const TeacherClassDetail = () => {
   const { classtopic, tid } = useParams();
@@ -46,23 +47,35 @@ const TeacherClassDetail = () => {
     ));
   };
 
-  const handleEndClass = () => {
-    // In a real app, this would make an API call to end the class
-    console.log('Class ended - ready for backend integration');
-    
-    // Update the mock data directly to persist the change
-    const currentClassTopic = decodeURIComponent(classtopic);
-    const currentTid = tid; // Don't decode tid as it's already correct
-    
-    // Find and update all doubts for this class to have a past timestamp
-    mockDoubts.forEach(doubt => {
-      if (doubt.classtopic === currentClassTopic && doubt.tid === currentTid) {
-        doubt.timestamp = "2025-09-27T10:00:00Z"; // Set to yesterday to make it past
+  const handleEndClass = async () => {
+    try {
+      // Find the class ID from the database to end it
+      const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      
+      // First get the class by classId and tid to find the MongoDB _id
+      const classesResponse = await axios.get(`${API_BASE_URL}/api/classes?tid=${tid}`);
+      const currentClass = classesResponse.data.find(cls => 
+        cls.classId === decodeURIComponent(classtopic)
+      );
+      
+      if (currentClass) {
+        // End the class by setting active to false
+        const endResponse = await axios.put(`${API_BASE_URL}/api/classes/${currentClass._id}/end`);
+        
+        if (endResponse.data.success) {
+          console.log('Class ended successfully');
+          // Navigate back to teacher dashboard
+          navigate('/teacher');
+        }
+      } else {
+        console.error('Class not found');
+        navigate('/teacher');
       }
-    });
-    
-    // Navigate back to teacher dashboard
-    navigate('/teacher');
+    } catch (error) {
+      console.error('Error ending class:', error);
+      // Still navigate back even if there's an error
+      navigate('/teacher');
+    }
   };
 
   const getStableColor = (text) => {

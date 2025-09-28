@@ -136,6 +136,193 @@ app.get("/api/teachingassistants", async (req, res) => {
   }
 });
 
+// Classes Management API
+app.post("/api/classes", async (req, res) => {
+  try {
+    const { classId, tid, active } = req.body;
+    
+    const newClass = {
+      classId: classId,
+      tid: tid,
+      active: active,
+      createdAt: new Date()
+    };
+    console.log("i am here")
+    console.log(`server ${req.body.classId}`);
+    const result = await mongoose.connection.db.collection('classes').insertOne(newClass);
+    
+    res.json({ 
+      success: true, 
+      message: "Class created successfully",
+      classId: result.insertedId,
+      class: { ...newClass, _id: result.insertedId }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get classes for a specific teacher
+app.get("/api/classes", async (req, res) => {
+  try {
+    const { tid } = req.query;
+    let query = {};
+    
+    if (tid) {
+      query.tid = tid;
+    }
+    
+    const classes = await mongoose.connection.db.collection('classes').find(query).toArray();
+    res.json(classes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update class active status (End Class)
+app.put("/api/classes/:classId/end", async (req, res) => {
+  try {
+    const { classId } = req.params;
+    
+    const result = await mongoose.connection.db.collection('classes').updateOne(
+      { _id: new mongoose.Types.ObjectId(classId) },
+      { 
+        $set: { 
+          active: false,
+          endedAt: new Date()
+        }
+      }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: "Class not found" });
+    }
+
+    // Update all student entries for this class to completed status
+    const updateResult = await mongoose.connection.db.collection('student_past_classes').updateMany(
+      { 
+        classId: classId,
+        status: 'active'
+      },
+      { 
+        $set: { 
+          status: 'completed',
+          completedAt: new Date()
+        }
+      }
+    );
+
+    console.log(`Updated ${updateResult.modifiedCount} student entries to completed status`);
+    
+    res.json({ 
+      success: true, 
+      message: "Class ended successfully",
+      studentsUpdated: updateResult.modifiedCount
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all active classes for students
+app.get("/api/classes/active", async (req, res) => {
+  try {
+    const activeClasses = await mongoose.connection.db.collection('classes')
+      .find({ active: true })
+      .toArray();
+    
+    res.json(activeClasses);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Student joins a class - adds entry to student_past_classes collection
+app.post("/api/classes/:classId/join", async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { studentId, studentEmail } = req.body;
+    
+    if (!studentId || !studentEmail) {
+      return res.status(400).json({ error: "Student ID and email are required" });
+    }
+
+    // Check if class exists and is active
+    const classData = await mongoose.connection.db.collection('classes')
+      .findOne({ _id: new mongoose.Types.ObjectId(classId), active: true });
+    
+    if (!classData) {
+      return res.status(404).json({ error: "Active class not found" });
+    }
+
+    // Check if student already joined this class
+    const existingEntry = await mongoose.connection.db.collection('student_past_classes')
+      .findOne({ classId: classId, studentId: studentId });
+    
+    if (existingEntry) {
+      return res.status(400).json({ error: "Student already joined this class" });
+    }
+
+    // Add entry to student_past_classes collection
+    const studentClassEntry = {
+      classId: classId,
+      studentId: studentId,
+      studentEmail: studentEmail,
+      teacherId: classData.tid,
+      className: classData.classId,
+      joinedAt: new Date(),
+      status: 'active',
+      completedAt: null
+    };
+
+    const result = await mongoose.connection.db.collection('student_past_classes')
+      .insertOne(studentClassEntry);
+    
+    res.json({ 
+      success: true, 
+      message: "Successfully joined class",
+      entryId: result.insertedId
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get past classes for a specific student
+app.get("/api/students/:studentId/past-classes", async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    const pastClasses = await mongoose.connection.db.collection('student_past_classes')
+      .find({ 
+        studentId: studentId,
+        status: 'completed'
+      })
+      .sort({ completedAt: -1 })
+      .toArray();
+    
+    res.json(pastClasses);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all classes joined by a student (active and completed)
+app.get("/api/students/:studentId/classes", async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    const studentClasses = await mongoose.connection.db.collection('student_past_classes')
+      .find({ studentId: studentId })
+      .sort({ joinedAt: -1 })
+      .toArray();
+    
+    res.json(studentClasses);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/doubts", async (req, res) => {
   try {
     const doubts = await Doubt.find();

@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { getAllDoubts } from '../services/api';
 import ClassCard from '../components/ClassCard';
 import Header from '../components/Header';
+import { useAuth } from '../contexts/AuthContext';
+import axios from 'axios';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doubts, setDoubts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,21 +22,48 @@ const TeacherDashboard = () => {
   };
 
   useEffect(() => {
-    const fetchDoubts = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await getAllDoubts();
-        setDoubts(data);
+        
+        // Fetch both doubts and classes
+        const [doubtsData, classesData] = await Promise.all([
+          getAllDoubts(),
+          fetchTeacherClasses()
+        ]);
+        
+        setDoubts([...doubtsData, ...classesData]);
       } catch (err) {
-        setError('Failed to fetch classes data');
-        console.error('Error fetching doubts:', err);
+        setError('Failed to fetch data');
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDoubts();
+    fetchData();
   }, []);
+
+  const fetchTeacherClasses = async () => {
+    try {
+      const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      const response = await axios.get(`${API_BASE_URL}/api/classes?tid=${user.email}`);
+      
+      // Convert classes to doubt-like format for display
+      return response.data.map(cls => ({
+        classtopic: cls.classId,
+        tid: cls.tid,
+        timestamp: cls.createdAt,
+        sid: 'system',
+        doubtasked: 'Class created',
+        sstatus: 'answered',
+        active: cls.active // Include active status from database
+      }));
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      return [];
+    }
+  };
 
   // Create unique classes from doubts data - filter by teacher ID
   const getUniqueClasses = () => {
@@ -41,7 +71,7 @@ const TeacherDashboard = () => {
     
     doubts.forEach(doubt => {
       const key = `${doubt.classtopic}-${doubt.tid}`;
-      if (!classMap.has(key) && doubt.tid === 'teacher_alpha') { // Filter by current teacher
+      if (!classMap.has(key) && doubt.tid === user.email) { // Filter by current teacher
         classMap.set(key, {
           classtopic: doubt.classtopic,
           tid: doubt.tid,
@@ -56,40 +86,79 @@ const TeacherDashboard = () => {
   // Separate classes into live and past
   const separateClasses = () => {
     const classes = getUniqueClasses();
-    const today = new Date().toDateString();
     
+    // Filter classes based on active status from database
     const liveClasses = classes.filter(cls => {
-      const classDate = new Date(cls.timestamp).toDateString();
-      return classDate === today;
+      // Check if this class has active status from database
+      const classFromDB = doubts.find(d => 
+        d.classtopic === cls.classtopic && 
+        d.tid === cls.tid && 
+        d.hasOwnProperty('active')
+      );
+      
+      // If found in DB, use active status; otherwise assume it's active if created today
+      if (classFromDB) {
+        return classFromDB.active === true;
+      } else {
+        // Fallback to date-based logic for mock data
+        const today = new Date().toDateString();
+        const classDate = new Date(cls.timestamp).toDateString();
+        return classDate === today;
+      }
     });
     
     const pastClasses = classes.filter(cls => {
-      const classDate = new Date(cls.timestamp).toDateString();
-      return classDate !== today;
+      // Check if this class has active status from database
+      const classFromDB = doubts.find(d => 
+        d.classtopic === cls.classtopic && 
+        d.tid === cls.tid && 
+        d.hasOwnProperty('active')
+      );
+      
+      // If found in DB, use active status; otherwise assume it's past if not today
+      if (classFromDB) {
+        return classFromDB.active === false;
+      } else {
+        // Fallback to date-based logic for mock data
+        const today = new Date().toDateString();
+        const classDate = new Date(cls.timestamp).toDateString();
+        return classDate !== today;
+      }
     });
     
     return { liveClasses, pastClasses };
   };
 
-  const handleCreateClass = () => {
+  const handleCreateClass = async () => {
     if (newClassName.trim()) {
-      // In a real app, this would make an API call to create a new class
-      const newClass = {
-        classtopic: newClassName.trim(),
-        tid: 'teacher_alpha',
-        timestamp: new Date().toISOString()
-      };
-      
-      // Add to doubts array to simulate the class creation
-      setDoubts(prev => [...prev, {
-        ...newClass,
-        sid: 'system',
-        doubtasked: 'Class created',
-        sstatus: 'answered'
-      }]);
-      
-      setNewClassName('');
-      setShowCreateClass(false);
+      try {
+        const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+        
+        const response = await axios.post(`${API_BASE_URL}/api/classes`, {
+          classId: newClassName.trim(),
+          tid: user.email, // Use the logged-in teacher's email/ID
+          active: true
+        });
+        if (response.data.success) {
+          // Add to local state for immediate UI update
+          const newClass = {
+            classtopic: newClassName.trim(),
+            tid: user.email,
+            timestamp: new Date().toISOString(),
+            sid: 'system',
+            doubtasked: 'Class created',
+            sstatus: 'answered',
+            active: true // New classes are active by default
+          };
+          
+          setDoubts(prev => [...prev, newClass]);
+          setNewClassName('');
+          setShowCreateClass(false);
+        }
+      } catch (error) {
+        console.error('Error creating class:', error);
+        alert('Failed to create class. Please try again.');
+      }
     }
   };
 

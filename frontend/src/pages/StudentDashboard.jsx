@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAllDoubts } from '../services/api';
 import ClassCard from '../components/ClassCard';
 import Header from '../components/Header';
+import axios from 'axios';
 
 const StudentDashboard = () => {
-  const [doubts, setDoubts] = useState([]);
+  const [liveClasses, setLiveClasses] = useState([]);
+  const [pastClasses, setPastClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('live');
@@ -20,59 +21,94 @@ const StudentDashboard = () => {
   };
 
   useEffect(() => {
-    const fetchDoubts = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await getAllDoubts();
-        setDoubts(data);
+        
+        // Fetch both active classes and student past classes
+        const [activeClassesData, pastClassesData] = await Promise.all([
+          fetchActiveClasses(),
+          fetchStudentPastClasses()
+        ]);
+        
+        setLiveClasses(activeClassesData);
+        setPastClasses(pastClassesData);
       } catch (err) {
-        setError('Failed to fetch doubts data');
-        console.error('Error fetching doubts:', err);
+        setError('Failed to fetch data');
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDoubts();
+    fetchData();
   }, []);
 
-  // Create unique classes from doubts data
-  const getUniqueClasses = () => {
-    const classMap = new Map();
-    
-    doubts.forEach(doubt => {
-      const key = `${doubt.classtopic}-${doubt.tid}`;
-      if (!classMap.has(key)) {
-        classMap.set(key, {
-          classtopic: doubt.classtopic,
-          tid: doubt.tid,
-          timestamp: doubt.timestamp
-        });
+  const fetchActiveClasses = async () => {
+    try {
+      const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      const response = await axios.get(`${API_BASE_URL}/api/classes/active`);
+      
+      // Convert active classes to proper format for display
+      return response.data.map(cls => ({
+        _id: cls._id,
+        classtopic: cls.classId,
+        tid: cls.tid,
+        timestamp: cls.createdAt,
+        active: cls.active,
+        isLiveClass: true
+      }));
+    } catch (error) {
+      console.error('Error fetching active classes:', error);
+      return [];
+    }
+  };
+
+  const fetchStudentPastClasses = async () => {
+    try {
+      const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+      const studentId = 'student_101'; // Mock student ID - in real app, get from auth context
+      
+      const response = await axios.get(`${API_BASE_URL}/api/students/${studentId}/past-classes`);
+      
+      // Convert past classes to proper format for display
+      return response.data.map(cls => ({
+        _id: cls._id,
+        classtopic: cls.className,
+        tid: cls.teacherId,
+        timestamp: cls.completedAt,
+        active: false,
+        isLiveClass: false
+      }));
+    } catch (error) {
+      console.error('Error fetching student past classes:', error);
+      return [];
+    }
+  };
+
+  const handleJoinSuccess = () => {
+    // Refresh data after successful join
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch both active classes and student past classes
+        const [activeClassesData, pastClassesData] = await Promise.all([
+          fetchActiveClasses(),
+          fetchStudentPastClasses()
+        ]);
+        
+        setLiveClasses(activeClassesData);
+        setPastClasses(pastClassesData);
+      } catch (err) {
+        setError('Failed to fetch data');
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
       }
-    });
-    
-    return Array.from(classMap.values());
+    };
+    fetchData();
   };
-
-  // Separate classes into live and past
-  const separateClasses = () => {
-    const classes = getUniqueClasses();
-    const today = new Date().toDateString();
-    
-    const liveClasses = classes.filter(cls => {
-      const classDate = new Date(cls.timestamp).toDateString();
-      return classDate === today;
-    });
-    
-    const pastClasses = classes.filter(cls => {
-      const classDate = new Date(cls.timestamp).toDateString();
-      return classDate !== today;
-    });
-    
-    return { liveClasses, pastClasses };
-  };
-
-  const { liveClasses, pastClasses } = separateClasses();
 
   if (loading) {
     return <div className="loading">Loading your classes...</div>;
@@ -111,11 +147,13 @@ const StudentDashboard = () => {
           liveClasses.length > 0 ? (
             liveClasses.map((cls, index) => (
               <ClassCard
-                key={`live-${index}`}
+                key={`live-${cls._id || index}`}
                 classtopic={cls.classtopic}
                 tid={cls.tid}
                 date={cls.timestamp}
                 isLive={true}
+                classId={cls._id}
+                onJoinSuccess={handleJoinSuccess}
               />
             ))
           ) : (
@@ -132,11 +170,12 @@ const StudentDashboard = () => {
           pastClasses.length > 0 ? (
             pastClasses.map((cls, index) => (
               <ClassCard
-                key={`past-${index}`}
+                key={`past-${cls._id || index}`}
                 classtopic={cls.classtopic}
                 tid={cls.tid}
                 date={cls.timestamp}
                 isLive={false}
+                classId={cls._id}
               />
             ))
           ) : (

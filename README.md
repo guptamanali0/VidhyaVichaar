@@ -2,7 +2,7 @@
 
 VidhyaVichaar is a real-time educational platform that enables seamless interaction between students, teachers, and teaching assistants through live classes and doubt management systems.
 
-##Github Link - https://github.com/guptamanali0/VidhyaVichaar.git
+## Github Link - https://github.com/guptamanali0/VidhyaVichaar.git
 
 ## Original Problem Statement
 
